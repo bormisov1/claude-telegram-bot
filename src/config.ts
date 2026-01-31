@@ -44,6 +44,7 @@ export const ALLOWED_USERS: number[] = (
 
 export const WORKING_DIR = process.env.CLAUDE_WORKING_DIR || HOME;
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
+export const SBER_CLIENT_SECRET = process.env.SBER_CLIENT_SECRET || "";
 
 // ============== Claude CLI Path ==============
 
@@ -160,7 +161,7 @@ export const TRANSCRIPTION_PROMPT = TRANSCRIPTION_CONTEXT
   ? `${BASE_TRANSCRIPTION_PROMPT}\n\nAdditional context:\n${TRANSCRIPTION_CONTEXT}`
   : BASE_TRANSCRIPTION_PROMPT;
 
-export const TRANSCRIPTION_AVAILABLE = !!OPENAI_API_KEY;
+export const TRANSCRIPTION_AVAILABLE = !!SBER_CLIENT_SECRET;
 
 // ============== Thinking Keywords ==============
 

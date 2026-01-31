@@ -4,23 +4,26 @@
  * Audit logging, voice transcription, typing indicator.
  */
 
-import OpenAI from "openai";
 import type { Chat } from "grammy/types";
 import type { Context } from "grammy";
 import type { AuditEvent } from "./types";
 import {
   AUDIT_LOG_PATH,
   AUDIT_LOG_JSON,
-  OPENAI_API_KEY,
-  TRANSCRIPTION_PROMPT,
+  SBER_CLIENT_SECRET,
   TRANSCRIPTION_AVAILABLE,
 } from "./config";
+import { SberTranscriptionService } from "./services/sber-transcription";
+import { AudioConverter } from "./services/audio-converter";
 
-// ============== OpenAI Client ==============
+// ============== Sber Transcription Client ==============
 
-let openaiClient: OpenAI | null = null;
-if (OPENAI_API_KEY && TRANSCRIPTION_AVAILABLE) {
-  openaiClient = new OpenAI({ apiKey: OPENAI_API_KEY });
+let sberTranscription: SberTranscriptionService | null = null;
+let audioConverter: AudioConverter | null = null;
+
+if (SBER_CLIENT_SECRET && TRANSCRIPTION_AVAILABLE) {
+  sberTranscription = new SberTranscriptionService(SBER_CLIENT_SECRET);
+  audioConverter = new AudioConverter();
 }
 
 // ============== Audit Logging ==============
@@ -150,19 +153,24 @@ export async function auditLogRateLimit(
 export async function transcribeVoice(
   filePath: string
 ): Promise<string | null> {
-  if (!openaiClient) {
-    console.warn("OpenAI client not available for transcription");
+  if (!sberTranscription || !audioConverter) {
+    console.warn("Sber transcription client not available");
     return null;
   }
 
   try {
+    // Read OGG file from Telegram
     const file = Bun.file(filePath);
-    const transcript = await openaiClient.audio.transcriptions.create({
-      model: "gpt-4o-transcribe",
-      file: file,
-      prompt: TRANSCRIPTION_PROMPT,
-    });
-    return transcript.text;
+    const oggBuffer = Buffer.from(await file.arrayBuffer());
+    console.log(`[Voice] Downloaded OGG file: ${oggBuffer.length} bytes`);
+
+    // Convert OGG to MP3 for Sber API
+    const mp3Buffer = await audioConverter.convertOggToMp3(oggBuffer);
+    console.log(`[Voice] Converted to MP3: ${mp3Buffer.length} bytes`);
+
+    // Transcribe audio
+    const transcript = await sberTranscription.transcribe(mp3Buffer);
+    return transcript;
   } catch (error) {
     console.error("Transcription failed:", error);
     return null;
